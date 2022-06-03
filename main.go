@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -14,124 +13,80 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// I'm a dumbass
+// I could have just used the url inputted to do the actual scraping
+// Instead I spent 3 hours learning regex
+// Here is what I have so far anyways
+// ([^=]*$) and ([^+])
+
 func main() {
-	Init()
-}
-
-// Init
-func Init() {
-	//
-
-	// Create temp directories
-	os.Mkdir("./tmp", 0755)
-
 GetInput:
-	// New scanner
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("Please enter the query tags, beginning after 'tags=': ")
-
-	regexp.Compile(`(?<=\+|\=)[a-z_\%289\(\)]+`)
-
-	// Scan
+	fmt.Printf("Please enter the URL:  ")
 	scanner.Scan()
-	input := scanner.Text()
-	tags := input
 
 CheckInput:
-	// Scan
-	fmt.Printf("You entered: %v, is that correct? Y or N: ", input)
+	fmt.Println("Confirm? [Y/N]: ")
 	scanner.Scan()
 
-	// Lowercase
-	input = scanner.Text()
-	input = strings.ToLower(input)
-
-	// Switch
-	switch input {
-	case "y", "yes":
-		Scrape(tags)
-	case "n", "no":
+	switch strings.ToUpper(scanner.Text()) {
+	case "Y", "YES":
+		Scrape(scanner.Text())
+	case "N", "NO":
 		goto GetInput
 	default:
-		fmt.Println("I did not understand that!")
 		goto CheckInput
-
 	}
-
 }
 
 // Scrape E621
-func Scrape(tags string) {
+func Scrape(url string) {
 	//
 
-	// Start timer, this will be used to calculate the speed and time taken
-	// var mainStopwatch time.Time = time.Now()
-
-	// Page number, how many pages of posts we have found
-	var totalPages int = 0
-
-	// // Empty slice
-	// var RawPosts []RawPost = []RawPost{}
-	// var MetaPosts []MetaPost = []MetaPost{}
-	// var CleanedPosts []CleanedPost = []CleanedPost{}
-
-	// var test []owo.RawPost = []owo.RawPost{}
-
-	// Load E621
-	LoadE621(tags, &totalPages)
-
-}
-
-// Load E621
-func LoadE621(tags string, totalPages *int) {
-	//
-
-	// Start
+	// Initial Stuff
 	fmt.Println("Starting...")
 	var start time.Time = time.Now()
+	var totalPages int = 0
 
-	// Search URL
-	var fullSearchURL string = fmt.Sprintf("https://e621.net/posts?page=%d&tags=%s", 1, tags)
-
-	// Get the page HTML
-	response, error := http.Get(fullSearchURL)
+	// Load E621
+	response, error := http.Get(url)
 	if error != nil {
 		log.Fatal(error)
 	}
 
 	fmt.Println("Loaded E621")
-
-	// Close the response
 	defer response.Body.Close()
 
-	// Make sure the status code is 200
 	if response.StatusCode != 200 {
 		log.Fatalf("Status code error: %d %s", response.StatusCode, response.Status)
 	}
 
-	// Parse the HTML so that goquery can read it
+	// Parse HTML
 	document, error := goquery.NewDocumentFromReader(response.Body)
 	if error != nil {
 		log.Fatal(error)
 	}
 
-	// Select the paginator
 	var paginator *goquery.Selection = document.Find("li.numbered-page")
-
-	// Get the last element of the paginator and convert it to an int
-	*totalPages, _ = strconv.Atoi(paginator.Last().Text())
+	totalPages, _ = strconv.Atoi(paginator.Last().Text())
 
 	// Stop
 	var end float64 = time.Since(start).Seconds()
-	if *totalPages == 0 {
-		*totalPages = 1
+	if totalPages == 0 {
+		totalPages = 1
 	}
 
 	// Log
-	fmt.Printf("Identified %d page(s) worth of posts in %F seconds!\n", *totalPages, end)
-	if *totalPages == 750 {
+	fmt.Printf("Identified %d page(s) worth of posts in %F seconds!\n", totalPages, end)
+	if totalPages == 750 {
 		fmt.Println("750 is the maximum number of pages E621 allows,\nThe bot will only scrape the first 750 pages.")
 	}
+
+}
+
+// Load E621
+func LoadE621(url string, totalPages *int) {
+	//
 
 }
 
